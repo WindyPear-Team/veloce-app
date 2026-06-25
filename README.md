@@ -1,0 +1,37 @@
+# Token Market App Connector
+
+Local connector for WindyPear advanced chat assistant mode.
+
+The connector registers a local device with the backend, polls for tool tasks,
+asks for local approval before file edits, and sends task results back to the
+backend. The workspace directory is selected in the web session settings.
+
+## Run
+
+Generate a connector token in Advanced Chat > Devices, then run:
+
+```powershell
+go run . -server http://localhost:8080 -token <connector-token>
+```
+
+## Permissions
+
+The connector only handles tasks for the absolute workspace path selected in
+the web session settings, and verifies that directory exists locally before any
+tool runs. Paths from the model must be relative to the workspace root.
+
+Read-only actions run directly:
+
+- `list_files`
+- `read_file`
+
+Editing actions require local approval in the terminal unless `-yes` is passed:
+
+- `write_file`
+- `replace_text`
+
+## Build
+
+```powershell
+go build -o token-market-app.exe .
+```

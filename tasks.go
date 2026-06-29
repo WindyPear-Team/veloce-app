@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -94,10 +95,20 @@ func (client connectorClient) executeTask(task connectorTask) (taskResult, error
 			intArg(task.Payload, "max_bytes", webFetchDefaultMaxBytes),
 		)
 		return textTaskResult(result), err
+	case "list_agent_skills":
+		result, err := listAgentSkills(task.WorkspacePath)
+		return textTaskResult(result), err
+	case "list_windows_drives":
+		result, err := listWindowsDrives()
+		return textTaskResult(result), err
 	}
-	workspace, err := client.workspaceRoot(task.WorkspacePath)
-	if err != nil {
-		return taskResult{}, err
+	workspace := ""
+	if strings.TrimSpace(task.WorkspacePath) != "" {
+		var err error
+		workspace, err = client.workspaceRoot(task.WorkspacePath)
+		if err != nil {
+			return taskResult{}, err
+		}
 	}
 	switch task.Action {
 	case "list_files":
@@ -115,9 +126,6 @@ func (client connectorClient) executeTask(task connectorTask) (taskResult, error
 	case "run_command":
 		result, err := runCommand(workspace, stringArg(task.Payload, "command"), intArg(task.Payload, "timeout_sec", 30))
 		return commandTaskResult(result), err
-	case "list_agent_skills":
-		result, err := listAgentSkills(workspace)
-		return textTaskResult(result), err
 	default:
 		return taskResult{}, fmt.Errorf("unsupported action %q", task.Action)
 	}

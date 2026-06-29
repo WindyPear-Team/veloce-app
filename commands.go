@@ -37,7 +37,9 @@ func runCommand(workspace string, command string, timeoutSec int) (commandResult
 	} else {
 		cmd = exec.CommandContext(ctx, "sh", "-c", command)
 	}
-	cmd.Dir = workspace
+	if strings.TrimSpace(workspace) != "" {
+		cmd.Dir = workspace
+	}
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

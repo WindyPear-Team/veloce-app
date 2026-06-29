@@ -9,6 +9,10 @@ import (
 )
 
 func (client connectorClient) workspaceRoot(path string) (string, error) {
+	return validateWorkspaceRoot(path)
+}
+
+func validateWorkspaceRoot(path string) (string, error) {
 	raw := strings.TrimSpace(path)
 	if raw == "" {
 		return "", errors.New("workspace path is required")
@@ -28,8 +32,18 @@ func (client connectorClient) workspaceRoot(path string) (string, error) {
 }
 
 func resolveWorkspacePath(workspace string, relPath string) (string, error) {
-	workspace = cleanAbs(workspace)
+	workspace = strings.TrimSpace(workspace)
 	relPath = strings.TrimSpace(relPath)
+	if workspace == "" {
+		if relPath == "" {
+			return "", errors.New("absolute path is required when no workspace is selected")
+		}
+		if !filepath.IsAbs(relPath) {
+			return "", errors.New("path must be absolute when no workspace is selected")
+		}
+		return cleanAbs(relPath), nil
+	}
+	workspace = cleanAbs(workspace)
 	if filepath.IsAbs(relPath) {
 		return "", errors.New("path must be relative to the workspace")
 	}

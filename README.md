@@ -16,15 +16,26 @@ go run . -server http://localhost:8080 -token <connector-token>
 
 ## Permissions
 
-Workspace file and command tasks run against the absolute workspace path
+Workspace file and command tasks usually run against the absolute workspace path
 selected in the web session settings, and the connector verifies that directory
 exists locally before those tools run. Paths from the model must be relative to
-the workspace root. Network tasks do not require a workspace path.
+the workspace root.
+
+Message channels may be configured without a workspace limit. In that mode,
+file paths must be absolute paths on the connector device. On Windows, the model
+can call `list_windows_drives` to discover available drive roots before choosing
+an absolute path.
+
+Agent skills are loaded from both the selected workspace `.agents` directory and
+the user-level `~/token-market/.agents` directory. User-level skills are returned
+under `.agents/global/...` so they do not collide with workspace-local skills.
+Network tasks do not require a workspace path.
 
 Read-only actions run directly:
 
 - `list_files`
 - `read_file`
+- `list_windows_drives` (Windows connectors only)
 - `web_search` (supports `auto`, `duckduckgo`, `bing`, `baidu`, and `google`)
 - `web_fetch`
 

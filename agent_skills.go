@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -36,29 +37,130 @@ type agentSkill struct {
 	Truncated bool   `json:"truncated"`
 }
 
+type agentSkillSource struct {
+	Root        string
+	DisplayRoot string
+	Label       string
+}
+
+type agentSkillFile struct {
+	Path        string
+	DisplayPath string
+}
+
 func listAgentSkills(workspace string) (string, error) {
-	root, err := resolveWorkspacePath(workspace, agentSkillsRoot)
-	if err != nil {
-		return "", err
+	sources := []agentSkillSource{}
+	workspace = strings.TrimSpace(workspace)
+	if workspace != "" {
+		root, err := validateWorkspaceRoot(workspace)
+		if err != nil {
+			return "", err
+		}
+		sources = append(sources, agentSkillSource{
+			Root:        filepath.Join(root, agentSkillsRoot),
+			DisplayRoot: ".agents",
+			Label:       ".agents",
+		})
 	}
-	info, err := os.Stat(root)
-	if errors.Is(err, os.ErrNotExist) {
-		return marshalAgentSkillsEnvelope(agentSkillsEnvelope{})
-	}
-	if err != nil {
-		return "", err
-	}
-	if !info.IsDir() {
-		return "", errors.New(".agents is not a directory")
+	if globalRoot := globalAgentSkillsRoot(); globalRoot != "" {
+		sources = append(sources, agentSkillSource{
+			Root:        globalRoot,
+			DisplayRoot: ".agents/global",
+			Label:       "global .agents",
+		})
 	}
 
-	paths := []string{}
+	paths := []agentSkillFile{}
+	envelope := agentSkillsEnvelope{
+		Skills:        []agentSkill{},
+		MaxFiles:      agentSkillsMaxFiles,
+		MaxFileBytes:  agentSkillsMaxFileBytes,
+		MaxTotalBytes: agentSkillsMaxTotalBytes,
+	}
+	for _, source := range sources {
+		if len(paths) >= agentSkillsMaxFiles {
+			envelope.Truncated = true
+			break
+		}
+		collected, truncated, err := collectAgentSkillFiles(source, agentSkillsMaxFiles-len(paths))
+		if err != nil {
+			return "", err
+		}
+		if truncated {
+			envelope.Truncated = true
+		}
+		paths = append(paths, collected...)
+	}
+	if len(paths) == 0 {
+		return marshalAgentSkillsEnvelope(envelope)
+	}
+	sort.Slice(paths, func(i, j int) bool {
+		return strings.ToLower(paths[i].DisplayPath) < strings.ToLower(paths[j].DisplayPath)
+	})
+
+	for _, item := range paths {
+		if envelope.TotalBytesRead >= agentSkillsMaxTotalBytes {
+			envelope.Truncated = true
+			break
+		}
+		remaining := agentSkillsMaxTotalBytes - envelope.TotalBytesRead
+		limit := agentSkillsMaxFileBytes
+		if remaining < limit {
+			limit = remaining
+		}
+		file, err := os.Open(item.Path)
+		if err != nil {
+			continue
+		}
+		data, readErr := io.ReadAll(io.LimitReader(file, int64(limit)+1))
+		_ = file.Close()
+		if readErr != nil {
+			continue
+		}
+		fileTruncated := len(data) > limit
+		if fileTruncated {
+			data = data[:limit]
+			envelope.Truncated = true
+		}
+		content := strings.TrimSpace(string(data))
+		if content == "" {
+			continue
+		}
+		envelope.TotalBytesRead += len(data)
+		envelope.Skills = append(envelope.Skills, agentSkill{
+			ID:        skillIDFromPath(item.DisplayPath),
+			Name:      skillNameFromPath(item.DisplayPath),
+			Path:      item.DisplayPath,
+			Content:   content,
+			Size:      len(data),
+			Truncated: fileTruncated,
+		})
+	}
+	return marshalAgentSkillsEnvelope(envelope)
+}
+
+func collectAgentSkillFiles(source agentSkillSource, remainingFiles int) ([]agentSkillFile, bool, error) {
+	if remainingFiles <= 0 {
+		return nil, true, nil
+	}
+	info, err := os.Stat(source.Root)
+	if errors.Is(err, os.ErrNotExist) {
+		return []agentSkillFile{}, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	if !info.IsDir() {
+		return nil, false, fmt.Errorf("%s is not a directory", source.Label)
+	}
+
+	paths := []agentSkillFile{}
 	truncated := false
-	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+	err = filepath.WalkDir(source.Root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return nil
 		}
-		rel, err := filepath.Rel(root, path)
+		rel, err := filepath.Rel(source.Root, path)
 		if err != nil || rel == "." {
 			return nil
 		}
@@ -75,71 +177,26 @@ func listAgentSkills(workspace string) (string, error) {
 		if depth > agentSkillsMaxDepth {
 			return nil
 		}
-		if len(paths) >= agentSkillsMaxFiles {
+		if len(paths) >= remainingFiles {
 			truncated = true
 			return filepath.SkipAll
 		}
-		paths = append(paths, path)
+		displayPath := strings.TrimRight(source.DisplayRoot, "/") + "/" + filepath.ToSlash(rel)
+		paths = append(paths, agentSkillFile{Path: path, DisplayPath: displayPath})
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return nil, false, err
 	}
-	sort.Slice(paths, func(i, j int) bool {
-		return strings.ToLower(filepath.ToSlash(paths[i])) < strings.ToLower(filepath.ToSlash(paths[j]))
-	})
+	return paths, truncated, nil
+}
 
-	envelope := agentSkillsEnvelope{
-		Skills:        []agentSkill{},
-		Truncated:     truncated,
-		MaxFiles:      agentSkillsMaxFiles,
-		MaxFileBytes:  agentSkillsMaxFileBytes,
-		MaxTotalBytes: agentSkillsMaxTotalBytes,
+func globalAgentSkillsRoot() string {
+	home, err := os.UserHomeDir()
+	if err != nil || strings.TrimSpace(home) == "" {
+		return ""
 	}
-	for _, path := range paths {
-		if envelope.TotalBytesRead >= agentSkillsMaxTotalBytes {
-			envelope.Truncated = true
-			break
-		}
-		remaining := agentSkillsMaxTotalBytes - envelope.TotalBytesRead
-		limit := agentSkillsMaxFileBytes
-		if remaining < limit {
-			limit = remaining
-		}
-		file, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-		data, readErr := io.ReadAll(io.LimitReader(file, int64(limit)+1))
-		_ = file.Close()
-		if readErr != nil {
-			continue
-		}
-		fileTruncated := len(data) > limit
-		if fileTruncated {
-			data = data[:limit]
-			envelope.Truncated = true
-		}
-		rel, err := filepath.Rel(workspace, path)
-		if err != nil {
-			continue
-		}
-		rel = filepath.ToSlash(rel)
-		content := strings.TrimSpace(string(data))
-		if content == "" {
-			continue
-		}
-		envelope.TotalBytesRead += len(data)
-		envelope.Skills = append(envelope.Skills, agentSkill{
-			ID:        skillIDFromPath(rel),
-			Name:      skillNameFromPath(rel),
-			Path:      rel,
-			Content:   content,
-			Size:      len(data),
-			Truncated: fileTruncated,
-		})
-	}
-	return marshalAgentSkillsEnvelope(envelope)
+	return filepath.Join(home, "token-market", agentSkillsRoot)
 }
 
 func isAgentSkillMarkdown(name string) bool {

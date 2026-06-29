@@ -77,6 +77,24 @@ func (result taskResult) payload(success bool) map[string]interface{} {
 }
 
 func (client connectorClient) executeTask(task connectorTask) (taskResult, error) {
+	switch task.Action {
+	case "web_search":
+		result, err := webSearch(
+			stringArg(task.Payload, "query"),
+			intArg(task.Payload, "max_results", 5),
+			stringArg(task.Payload, "language"),
+			stringArg(task.Payload, "region"),
+			stringArg(task.Payload, "time_range"),
+			stringArg(task.Payload, "engine"),
+		)
+		return textTaskResult(result), err
+	case "web_fetch":
+		result, err := webFetch(
+			stringArg(task.Payload, "url"),
+			intArg(task.Payload, "max_bytes", webFetchDefaultMaxBytes),
+		)
+		return textTaskResult(result), err
+	}
 	workspace, err := client.workspaceRoot(task.WorkspacePath)
 	if err != nil {
 		return taskResult{}, err
@@ -97,15 +115,6 @@ func (client connectorClient) executeTask(task connectorTask) (taskResult, error
 	case "run_command":
 		result, err := runCommand(workspace, stringArg(task.Payload, "command"), intArg(task.Payload, "timeout_sec", 30))
 		return commandTaskResult(result), err
-	case "web_search":
-		result, err := webSearch(
-			stringArg(task.Payload, "query"),
-			intArg(task.Payload, "max_results", 5),
-			stringArg(task.Payload, "language"),
-			stringArg(task.Payload, "region"),
-			stringArg(task.Payload, "time_range"),
-		)
-		return textTaskResult(result), err
 	case "list_agent_skills":
 		result, err := listAgentSkills(workspace)
 		return textTaskResult(result), err

@@ -16,15 +16,17 @@ go run . -server http://localhost:8080 -token <connector-token>
 
 ## Permissions
 
-The connector only handles tasks for the absolute workspace path selected in
-the web session settings, and verifies that directory exists locally before any
-tool runs. Paths from the model must be relative to the workspace root.
+Workspace file and command tasks run against the absolute workspace path
+selected in the web session settings, and the connector verifies that directory
+exists locally before those tools run. Paths from the model must be relative to
+the workspace root. Network tasks do not require a workspace path.
 
 Read-only actions run directly:
 
 - `list_files`
 - `read_file`
-- `web_search`
+- `web_search` (supports `auto`, `duckduckgo`, `bing`, `baidu`, and `google`)
+- `web_fetch`
 
 Editing actions require approval in the web frontend before the connector can
 receive the task, unless automatic approval is enabled for the chat session:

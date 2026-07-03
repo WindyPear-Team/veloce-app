@@ -135,6 +135,9 @@ func (client connectorClient) executeTask(task connectorTask) (taskResult, error
 	case "replace_text":
 		result, err := replaceText(workspace, stringArg(task.Payload, "path"), stringArg(task.Payload, "old_text"), stringArg(task.Payload, "new_text"))
 		return textTaskResult(result), err
+	case "commit_delta":
+		result, err := commitDelta(workspace, task.Payload)
+		return textTaskResult(result), err
 	case "run_command":
 		result, err := runCommand(workspace, stringArg(task.Payload, "command"), intArg(task.Payload, "timeout_sec", 30))
 		return commandTaskResult(result), err

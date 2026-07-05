@@ -129,6 +129,9 @@ func (client connectorClient) executeTask(task connectorTask) (taskResult, error
 	case "read_file":
 		result, err := readFile(workspace, stringArg(task.Payload, "path"), intArg(task.Payload, "max_bytes", 120000))
 		return textTaskResult(result), err
+	case "file_sha256":
+		result, err := fileSHA256(workspace, stringArg(task.Payload, "path"))
+		return textTaskResult(result), err
 	case "write_file":
 		result, err := writeFile(workspace, stringArg(task.Payload, "path"), stringArg(task.Payload, "content"), boolArg(task.Payload, "overwrite"), boolArg(task.Payload, "create_dirs"))
 		return textTaskResult(result), err

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -69,6 +71,29 @@ func readFile(workspace string, relPath string, maxBytes int) (string, error) {
 		text = string(data[:maxBytes]) + "\n...(truncated)"
 	}
 	return text, nil
+}
+
+func fileSHA256(workspace string, relPath string) (string, error) {
+	if relPath == "" {
+		return "", errors.New("path is required")
+	}
+	target, err := resolveWorkspacePath(workspace, relPath)
+	if err != nil {
+		return "", err
+	}
+	file, err := os.Open(target)
+	if errors.Is(err, os.ErrNotExist) {
+		return sha256String(""), nil
+	}
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 func writeFile(workspace string, relPath string, content string, overwrite bool, createDirs bool) (string, error) {

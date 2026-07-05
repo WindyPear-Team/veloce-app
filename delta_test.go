@@ -70,6 +70,28 @@ func TestCommitDeltaRejectsEscapingPath(t *testing.T) {
 	}
 }
 
+func TestFileSHA256HashesFullFileAndMissingFile(t *testing.T) {
+	workspace := t.TempDir()
+	path := filepath.Join(workspace, "a.txt")
+	if err := os.WriteFile(path, []byte("current"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	hash, err := fileSHA256(workspace, "a.txt")
+	if err != nil {
+		t.Fatalf("fileSHA256 returned error: %v", err)
+	}
+	if hash != sha256String("current") {
+		t.Fatalf("hash = %q, want %q", hash, sha256String("current"))
+	}
+	missing, err := fileSHA256(workspace, "missing.txt")
+	if err != nil {
+		t.Fatalf("missing file should return empty hash, got %v", err)
+	}
+	if missing != sha256String("") {
+		t.Fatalf("missing hash = %q, want %q", missing, sha256String(""))
+	}
+}
+
 func TestCommitDeltaChecksBaseSHA(t *testing.T) {
 	workspace := t.TempDir()
 	path := filepath.Join(workspace, "a.txt")

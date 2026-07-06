@@ -1,3 +1,3 @@
-module github.com/WindyPear-Team/token-market-app
+module github.com/WindyPear-Team/veloce-app
 
 go 1.26.3

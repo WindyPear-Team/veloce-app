@@ -1,4 +1,4 @@
-# Token Market App Connector
+# Veloce App Connector
 
 Local connector for WindyPear advanced chat assistant mode.
 
@@ -38,7 +38,7 @@ can call `list_windows_drives` to discover available drive roots before choosing
 an absolute path.
 
 Agent skills are loaded from both the selected workspace `.agents` directory and
-the user-level `~/token-market/.agents` directory. User-level skills are returned
+the user-level `~/veloce/.agents` directory. User-level skills are returned
 under `.agents/global/...` so they do not collide with workspace-local skills.
 Network tasks do not require a workspace path.
 
@@ -74,5 +74,5 @@ then atomically swap the site's `public` directory.
 ## Build
 
 ```powershell
-go build -o token-market-app.exe .
+go build -o veloce-app.exe .
 ```

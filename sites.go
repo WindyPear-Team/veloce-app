@@ -68,11 +68,11 @@ func newStaticSiteManager(dataDir string) (*staticSiteManager, error) {
 }
 
 func defaultConnectorDataDir() string {
-	if value := strings.TrimSpace(os.Getenv("TOKEN_MARKET_APP_DATA")); value != "" {
+	if value := strings.TrimSpace(os.Getenv("VELOCE_APP_DATA")); value != "" {
 		return value
 	}
 	if dir, err := os.UserConfigDir(); err == nil && strings.TrimSpace(dir) != "" {
-		return filepath.Join(dir, "token-market-app")
+		return filepath.Join(dir, "veloce-app")
 	}
 	return filepath.Join(".", "data")
 }

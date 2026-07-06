@@ -148,7 +148,7 @@ func globalAgentGroupsRoot() string {
 	if err != nil || strings.TrimSpace(home) == "" {
 		return ""
 	}
-	return filepath.Join(home, "token-market", agentGroupsRoot)
+	return filepath.Join(home, "veloce", agentGroupsRoot)
 }
 
 func marshalAgentGroupsEnvelope(envelope agentGroupEnvelope) (string, error) {

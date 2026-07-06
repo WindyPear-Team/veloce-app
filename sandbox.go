@@ -94,7 +94,7 @@ func sandboxRoot() (string, error) {
 	if err != nil || strings.TrimSpace(base) == "" {
 		base = os.TempDir()
 	}
-	root := filepath.Join(base, "token-market-app", "sandboxes")
+	root := filepath.Join(base, "veloce-app", "sandboxes")
 	if err := os.MkdirAll(root, 0755); err != nil {
 		return "", err
 	}

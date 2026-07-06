@@ -196,7 +196,7 @@ func globalAgentSkillsRoot() string {
 	if err != nil || strings.TrimSpace(home) == "" {
 		return ""
 	}
-	return filepath.Join(home, "token-market", agentSkillsRoot)
+	return filepath.Join(home, "veloce", agentSkillsRoot)
 }
 
 func isAgentSkillMarkdown(name string) bool {

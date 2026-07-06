@@ -13,11 +13,13 @@ import (
 
 func (client connectorClient) register() error {
 	payload := map[string]interface{}{
-		"name":     client.config.Name,
-		"hostname": hostname(),
-		"os":       runtime.GOOS,
-		"arch":     runtime.GOARCH,
-		"version":  connectorVersion,
+		"name":        client.config.Name,
+		"hostname":    hostname(),
+		"os":          runtime.GOOS,
+		"arch":        runtime.GOARCH,
+		"version":     connectorVersion,
+		"mode":        client.config.Mode,
+		"listen_port": client.config.ListenPort,
 	}
 	var response map[string]interface{}
 	return client.doJSON(http.MethodPost, "/api/advanced-chat/connectors/register", payload, &response)
@@ -28,11 +30,13 @@ func (client connectorClient) heartbeatLoop() {
 	defer ticker.Stop()
 	for range ticker.C {
 		payload := map[string]interface{}{
-			"name":     client.config.Name,
-			"hostname": hostname(),
-			"os":       runtime.GOOS,
-			"arch":     runtime.GOARCH,
-			"version":  connectorVersion,
+			"name":        client.config.Name,
+			"hostname":    hostname(),
+			"os":          runtime.GOOS,
+			"arch":        runtime.GOARCH,
+			"version":     connectorVersion,
+			"mode":        client.config.Mode,
+			"listen_port": client.config.ListenPort,
 		}
 		if err := client.doJSON(http.MethodPost, "/api/advanced-chat/connectors/heartbeat", payload, nil); err != nil {
 			fmt.Printf("heartbeat failed: %v\n", err)

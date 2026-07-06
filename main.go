@@ -12,20 +12,27 @@ import (
 const connectorVersion = "0.1.0"
 
 type connectorConfig struct {
-	Server string
-	Token  string
-	Name   string
+	Server     string
+	Token      string
+	Name       string
+	Mode       string
+	ListenPort int
+	DataDir    string
 }
 
 type connectorClient struct {
-	config connectorConfig
-	http   *http.Client
+	config      connectorConfig
+	http        *http.Client
+	siteManager *staticSiteManager
 }
 
 func main() {
 	server := flag.String("server", "http://localhost:8080", "Backend server URL")
 	token := flag.String("token", "", "Connector token generated from advanced chat")
 	name := flag.String("name", "", "Device name shown in advanced chat")
+	mode := flag.String("mode", "platform", "Connector mode: platform or web_server")
+	webPort := flag.Int("web-port", 8080, "Static website server port in web_server mode")
+	dataDir := flag.String("data-dir", "", "Connector data directory")
 	flag.Parse()
 
 	if strings.TrimSpace(*token) == "" {
@@ -36,18 +43,38 @@ func main() {
 	if deviceName == "" {
 		deviceName = hostname
 	}
+	config := connectorConfig{
+		Server:     strings.TrimRight(strings.TrimSpace(*server), "/"),
+		Token:      strings.TrimSpace(*token),
+		Name:       deviceName,
+		Mode:       normalizeConnectorMode(*mode),
+		ListenPort: normalizeListenPort(*webPort, *mode),
+		DataDir:    strings.TrimSpace(*dataDir),
+	}
 	client := connectorClient{
-		config: connectorConfig{
-			Server: strings.TrimRight(strings.TrimSpace(*server), "/"),
-			Token:  strings.TrimSpace(*token),
-			Name:   deviceName,
-		},
-		http: &http.Client{Timeout: 35 * time.Second},
+		config: config,
+		http:   &http.Client{Timeout: 35 * time.Second},
+	}
+	if client.config.Mode == connectorModeWebServer {
+		manager, err := newStaticSiteManager(client.config.DataDir)
+		if err != nil {
+			fatalf("static site manager failed: %v", err)
+		}
+		client.siteManager = manager
+		go func() {
+			if err := manager.serve(client.config.ListenPort); err != nil {
+				fatalf("web server failed: %v", err)
+			}
+		}()
 	}
 	if err := client.register(); err != nil {
 		fatalf("register failed: %v", err)
 	}
-	fmt.Printf("Connector online as %q\n", deviceName)
+	if client.config.Mode == connectorModeWebServer {
+		fmt.Printf("Connector online as %q in web_server mode on port %d\n", deviceName, client.config.ListenPort)
+	} else {
+		fmt.Printf("Connector online as %q\n", deviceName)
+	}
 	go client.heartbeatLoop()
 	client.pollLoop()
 }
@@ -55,4 +82,28 @@ func main() {
 func fatalf(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, format+"\n", args...)
 	os.Exit(1)
+}
+
+const (
+	connectorModePlatform  = "platform"
+	connectorModeWebServer = "web_server"
+)
+
+func normalizeConnectorMode(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case connectorModeWebServer:
+		return connectorModeWebServer
+	default:
+		return connectorModePlatform
+	}
+}
+
+func normalizeListenPort(port int, mode string) int {
+	if normalizeConnectorMode(mode) != connectorModeWebServer {
+		return 0
+	}
+	if port <= 0 || port > 65535 {
+		return 8080
+	}
+	return port
 }

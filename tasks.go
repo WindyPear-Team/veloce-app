@@ -122,27 +122,39 @@ func (client connectorClient) executeTask(task connectorTask) (taskResult, error
 			return taskResult{}, err
 		}
 	}
+	sandboxID := stringArg(task.Payload, "sandbox_id")
+	sandboxWorkspace := workspace
+	if strings.TrimSpace(sandboxID) != "" && strings.TrimSpace(workspace) != "" && task.Action != "run_command" && task.Action != "commit_delta" {
+		var err error
+		sandboxWorkspace, err = prepareSandboxWorkspace(workspace, sandboxID)
+		if err != nil {
+			return taskResult{}, err
+		}
+	}
 	switch task.Action {
 	case "list_files":
-		result, err := listFiles(workspace, stringArg(task.Payload, "path"), intArg(task.Payload, "max_entries", 100))
+		result, err := listFiles(sandboxWorkspace, stringArg(task.Payload, "path"), intArg(task.Payload, "max_entries", 100))
 		return textTaskResult(result), err
 	case "read_file":
-		result, err := readFile(workspace, stringArg(task.Payload, "path"), intArg(task.Payload, "max_bytes", 120000))
+		result, err := readFile(sandboxWorkspace, stringArg(task.Payload, "path"), intArg(task.Payload, "max_bytes", 120000))
 		return textTaskResult(result), err
 	case "file_sha256":
-		result, err := fileSHA256(workspace, stringArg(task.Payload, "path"))
+		result, err := fileSHA256(sandboxWorkspace, stringArg(task.Payload, "path"))
 		return textTaskResult(result), err
 	case "write_file":
-		result, err := writeFile(workspace, stringArg(task.Payload, "path"), stringArg(task.Payload, "content"), boolArg(task.Payload, "overwrite"), boolArg(task.Payload, "create_dirs"))
+		result, err := writeFile(sandboxWorkspace, stringArg(task.Payload, "path"), stringArg(task.Payload, "content"), boolArg(task.Payload, "overwrite"), boolArg(task.Payload, "create_dirs"))
 		return textTaskResult(result), err
 	case "replace_text":
-		result, err := replaceText(workspace, stringArg(task.Payload, "path"), stringArg(task.Payload, "old_text"), stringArg(task.Payload, "new_text"))
+		result, err := replaceText(sandboxWorkspace, stringArg(task.Payload, "path"), stringArg(task.Payload, "old_text"), stringArg(task.Payload, "new_text"))
 		return textTaskResult(result), err
 	case "commit_delta":
 		result, err := commitDelta(workspace, task.Payload)
 		return textTaskResult(result), err
 	case "run_command":
-		result, err := runCommand(workspace, stringArg(task.Payload, "command"), intArg(task.Payload, "timeout_sec", 30))
+		result, err := runCommandWithSandbox(workspace, stringArg(task.Payload, "command"), intArg(task.Payload, "timeout_sec", 30), sandboxCommandOptions{
+			SandboxID: stringArg(task.Payload, "sandbox_id"),
+			Backend:   stringArg(task.Payload, "sandbox_backend"),
+		})
 		return commandTaskResult(result), err
 	default:
 		return taskResult{}, fmt.Errorf("unsupported action %q", task.Action)

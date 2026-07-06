@@ -111,6 +111,26 @@ func TestCommitDeltaChecksBaseSHA(t *testing.T) {
 	assertFileContent(t, path, "current")
 }
 
+func TestCommitDeltaDeletesFile(t *testing.T) {
+	workspace := t.TempDir()
+	path := filepath.Join(workspace, "a.txt")
+	if err := os.WriteFile(path, []byte("current"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := commitDelta(workspace, map[string]interface{}{
+		"mutations": []map[string]interface{}{
+			{"action": "delete_file", "path": "a.txt", "base_sha256": sha256String("current")},
+		},
+	})
+	if err != nil {
+		t.Fatalf("commitDelta returned error: %v", err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("expected file to be deleted, got %v", err)
+	}
+}
+
 func assertFileContent(t *testing.T, path string, expected string) {
 	t.Helper()
 	data, err := os.ReadFile(path)

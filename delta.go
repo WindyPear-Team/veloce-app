@@ -95,6 +95,12 @@ func commitDelta(workspace string, payload map[string]interface{}) (string, erro
 			}
 			file.content = strings.Replace(file.content, mutation.OldText, mutation.NewText, 1)
 			file.finalExists = true
+		case "delete_file":
+			if !file.finalExists {
+				return "", fmt.Errorf("mutation %d: file does not exist: %s", index+1, mutation.Path)
+			}
+			file.content = ""
+			file.finalExists = false
 		default:
 			return "", fmt.Errorf("mutation %d: unsupported action %q", index+1, mutation.Action)
 		}
@@ -183,6 +189,16 @@ func verifyCommitDeltaBaseSHA(file *stagedCommitFile, expected string) error {
 func preflightCommitDelta(files []*stagedCommitFile) error {
 	for _, file := range files {
 		if !file.finalExists {
+			if !file.initialExists {
+				continue
+			}
+			data, err := os.ReadFile(file.target)
+			if err != nil {
+				return fmt.Errorf("failed to re-read %s before commit: %w", file.relPath, err)
+			}
+			if sha256String(string(data)) != sha256String(file.initialContent) {
+				return fmt.Errorf("file changed before commit: %s", file.relPath)
+			}
 			continue
 		}
 		if file.initialExists {
@@ -215,6 +231,9 @@ func applyCommitDelta(files []*stagedCommitFile) error {
 	replacements := make([]commitReplacement, 0, len(files))
 	for _, file := range files {
 		if !file.finalExists {
+			if file.initialExists {
+				replacements = append(replacements, commitReplacement{target: file.target, existed: true})
+			}
 			continue
 		}
 		if file.allowCreateDirs {
@@ -241,6 +260,10 @@ func applyCommitDelta(files []*stagedCommitFile) error {
 				return err
 			}
 			replacement.backup = backup
+		}
+		if replacement.temp == "" {
+			applied = append(applied, replacement)
+			continue
 		}
 		if err := os.Rename(replacement.temp, replacement.target); err != nil {
 			if replacement.backup != "" {

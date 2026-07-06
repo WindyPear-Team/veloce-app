@@ -28,6 +28,10 @@ func runCommand(workspace string, command string, timeoutSec int) (commandResult
 	if timeoutSec <= 0 || timeoutSec > 120 {
 		timeoutSec = 30
 	}
+	return runCommandInDir(workspace, command, timeoutSec)
+}
+
+func runCommandInDir(workspace string, command string, timeoutSec int) (commandResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSec)*time.Second)
 	defer cancel()
 

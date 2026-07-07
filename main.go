@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const connectorVersion = "0.1.0"
+var connectorVersion = "dev"
 
 type connectorConfig struct {
 	Server     string
@@ -82,6 +82,13 @@ func main() {
 func fatalf(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, format+"\n", args...)
 	os.Exit(1)
+}
+
+func currentConnectorVersion() string {
+	if version := strings.TrimSpace(os.Getenv("VELOCE_CONNECTOR_VERSION")); version != "" {
+		return version
+	}
+	return connectorVersion
 }
 
 const (

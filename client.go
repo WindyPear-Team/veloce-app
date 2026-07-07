@@ -12,12 +12,13 @@ import (
 )
 
 func (client connectorClient) register() error {
+	version := currentConnectorVersion()
 	payload := map[string]interface{}{
 		"name":        client.config.Name,
 		"hostname":    hostname(),
 		"os":          runtime.GOOS,
 		"arch":        runtime.GOARCH,
-		"version":     connectorVersion,
+		"version":     version,
 		"mode":        client.config.Mode,
 		"listen_port": client.config.ListenPort,
 	}
@@ -29,12 +30,13 @@ func (client connectorClient) heartbeatLoop() {
 	ticker := time.NewTicker(20 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
+		version := currentConnectorVersion()
 		payload := map[string]interface{}{
 			"name":        client.config.Name,
 			"hostname":    hostname(),
 			"os":          runtime.GOOS,
 			"arch":        runtime.GOARCH,
-			"version":     connectorVersion,
+			"version":     version,
 			"mode":        client.config.Mode,
 			"listen_port": client.config.ListenPort,
 		}

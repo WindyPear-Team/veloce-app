@@ -19,11 +19,20 @@ jobs:
           - goos: linux
             goarch: amd64
             binary_name: app
+          - goos: linux
+            goarch: arm64
+            binary_name: app
           - goos: darwin
             goarch: amd64
             binary_name: app
+          - goos: darwin
+            goarch: arm64
+            binary_name: app
           - goos: windows
             goarch: amd64
+            binary_name: app.exe
+          - goos: windows
+            goarch: arm64
             binary_name: app.exe
 
     steps:
@@ -43,8 +52,9 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0 # 禁用 CGO 以实现静态编译，确保跨平台兼容性
+          VELOCE_CONNECTOR_VERSION: ${{ github.ref_name }}
         run: |
-          go build -v -o ${{ matrix.binary_name }} .
+          go build -v -trimpath -ldflags="-s -w -X main.connectorVersion=${VELOCE_CONNECTOR_VERSION}" -o ${{ matrix.binary_name }} .
 
       # 4. 打包压缩文件
       - name: Package Binary

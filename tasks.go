@@ -98,6 +98,15 @@ func (client connectorClient) executeTask(task connectorTask) (taskResult, error
 	case "list_agent_skills":
 		result, err := listAgentSkills(task.WorkspacePath)
 		return textTaskResult(result), err
+	case "read_agent_skill":
+		result, err := readAgentSkill(task.WorkspacePath, stringArg(task.Payload, "id"), stringArg(task.Payload, "path"), intArg(task.Payload, "max_bytes", 65536))
+		return textTaskResult(result), err
+	case "read_agent_skill_resource":
+		result, err := readAgentSkillResource(task.WorkspacePath, stringArg(task.Payload, "id"), stringArg(task.Payload, "path"), stringArg(task.Payload, "resource"), intArg(task.Payload, "max_bytes", 65536))
+		return textTaskResult(result), err
+	case "sync_agent_skills":
+		result, err := syncAgentSkills(task.Payload)
+		return textTaskResult(result), err
 	case "list_windows_drives":
 		result, err := listWindowsDrives()
 		return textTaskResult(result), err

@@ -37,7 +37,7 @@ func runCommandInDir(workspace string, command string, timeoutSec int) (commandR
 
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(ctx, "cmd.exe", "/c", command)
+		cmd = exec.CommandContext(ctx, "cmd.exe", "/d", "/s", "/c", "chcp 65001>nul & "+command)
 	} else {
 		cmd = exec.CommandContext(ctx, "sh", "-c", command)
 	}
@@ -50,8 +50,8 @@ func runCommandInDir(workspace string, command string, timeoutSec int) (commandR
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
-	stdoutText := strings.TrimSpace(stdout.String())
-	stderrText := strings.TrimSpace(stderr.String())
+	stdoutText := strings.TrimSpace(decodeCommandOutput(stdout.Bytes()))
+	stderrText := strings.TrimSpace(decodeCommandOutput(stderr.Bytes()))
 	outputText := strings.TrimSpace(joinCommandOutput(stdoutText, stderrText))
 	result := commandResult{
 		Result: outputText,

@@ -24,6 +24,7 @@ type connectorClient struct {
 	config      connectorConfig
 	http        *http.Client
 	siteManager *staticSiteManager
+	mcp         *mcpProcessManager
 }
 
 func main() {
@@ -54,6 +55,7 @@ func main() {
 	client := connectorClient{
 		config: config,
 		http:   &http.Client{Timeout: 35 * time.Second},
+		mcp:    newMCPProcessManager(),
 	}
 	if client.config.Mode == connectorModeWebServer {
 		manager, err := newStaticSiteManager(client.config.DataDir)

@@ -95,6 +95,18 @@ func (client connectorClient) executeTask(task connectorTask) (taskResult, error
 			intArg(task.Payload, "max_bytes", webFetchDefaultMaxBytes),
 		)
 		return textTaskResult(result), err
+	case "mcp_list_tools":
+		if client.mcp == nil {
+			return taskResult{}, fmt.Errorf("mcp manager is not available")
+		}
+		result, err := client.mcp.listTools(task.Payload)
+		return textTaskResult(result), err
+	case "mcp_call_tool":
+		if client.mcp == nil {
+			return taskResult{}, fmt.Errorf("mcp manager is not available")
+		}
+		result, err := client.mcp.callTool(task.Payload)
+		return textTaskResult(result), err
 	case "list_agent_skills":
 		result, err := listAgentSkills(task.WorkspacePath)
 		return textTaskResult(result), err

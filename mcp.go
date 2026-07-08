@@ -99,6 +99,48 @@ func (manager *mcpProcessManager) callTool(payload map[string]interface{}) (stri
 	return string(result), nil
 }
 
+func (manager *mcpProcessManager) listProcesses() (string, error) {
+	manager.mu.Lock()
+	processes := make([]*mcpProcess, 0, len(manager.processes))
+	for key, process := range manager.processes {
+		if process != nil && process.isAlive() {
+			processes = append(processes, process)
+		} else {
+			delete(manager.processes, key)
+		}
+	}
+	manager.mu.Unlock()
+	statuses := make([]mcpProcessStatus, 0, len(processes))
+	for _, process := range processes {
+		statuses = append(statuses, process.status())
+	}
+	data, err := json.Marshal(map[string]interface{}{"processes": statuses})
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func (manager *mcpProcessManager) stopProcess(key string) (string, error) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return "", errors.New("mcp process key is required")
+	}
+	manager.mu.Lock()
+	process := manager.processes[key]
+	delete(manager.processes, key)
+	manager.mu.Unlock()
+	if process == nil {
+		return "", errors.New("mcp process not found")
+	}
+	process.close()
+	data, err := json.Marshal(map[string]interface{}{"ok": true, "key": key})
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
 func (manager *mcpProcessManager) process(server mcpServerConfig) (*mcpProcess, error) {
 	key := mcpServerKey(server)
 	manager.mu.Lock()
@@ -134,12 +176,26 @@ type mcpProcess struct {
 	server      mcpServerConfig
 	cmd         *exec.Cmd
 	stdin       io.WriteCloser
+	startedAt   time.Time
 	writeMu     sync.Mutex
 	mu          sync.Mutex
 	responses   map[int64]chan mcpStdioResponse
 	idCounter   int64
 	initialized bool
 	closed      chan struct{}
+}
+
+type mcpProcessStatus struct {
+	Key             string    `json:"key"`
+	ID              string    `json:"id,omitempty"`
+	Name            string    `json:"name,omitempty"`
+	Command         string    `json:"command"`
+	Args            []string  `json:"args,omitempty"`
+	Cwd             string    `json:"cwd,omitempty"`
+	PID             int       `json:"pid,omitempty"`
+	Initialized     bool      `json:"initialized"`
+	PendingRequests int       `json:"pending_requests"`
+	StartedAt       time.Time `json:"started_at"`
 }
 
 type mcpStdioRequest struct {
@@ -204,6 +260,7 @@ func startMCPProcess(key string, server mcpServerConfig) (*mcpProcess, error) {
 		server:    server,
 		cmd:       cmd,
 		stdin:     stdin,
+		startedAt: time.Now(),
 		responses: map[int64]chan mcpStdioResponse{},
 		closed:    make(chan struct{}),
 	}
@@ -219,6 +276,29 @@ func (process *mcpProcess) isAlive() bool {
 		return false
 	default:
 		return true
+	}
+}
+
+func (process *mcpProcess) status() mcpProcessStatus {
+	process.mu.Lock()
+	initialized := process.initialized
+	pending := len(process.responses)
+	process.mu.Unlock()
+	pid := 0
+	if process.cmd != nil && process.cmd.Process != nil {
+		pid = process.cmd.Process.Pid
+	}
+	return mcpProcessStatus{
+		Key:             process.key,
+		ID:              process.server.ID,
+		Name:            process.server.Name,
+		Command:         process.server.Command,
+		Args:            append([]string{}, process.server.Args...),
+		Cwd:             process.server.Cwd,
+		PID:             pid,
+		Initialized:     initialized,
+		PendingRequests: pending,
+		StartedAt:       process.startedAt,
 	}
 }
 

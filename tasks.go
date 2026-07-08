@@ -107,6 +107,18 @@ func (client connectorClient) executeTask(task connectorTask) (taskResult, error
 		}
 		result, err := client.mcp.callTool(task.Payload)
 		return textTaskResult(result), err
+	case "list_mcp_processes":
+		if client.mcp == nil {
+			return taskResult{}, fmt.Errorf("mcp manager is not available")
+		}
+		result, err := client.mcp.listProcesses()
+		return textTaskResult(result), err
+	case "stop_mcp_process":
+		if client.mcp == nil {
+			return taskResult{}, fmt.Errorf("mcp manager is not available")
+		}
+		result, err := client.mcp.stopProcess(stringArg(task.Payload, "key"))
+		return textTaskResult(result), err
 	case "list_agent_skills":
 		result, err := listAgentSkills(task.WorkspacePath)
 		return textTaskResult(result), err

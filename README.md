@@ -1,6 +1,6 @@
 # Veloce App Connector
 
-Local connector for WindyPear advanced chat assistant mode.
+Local connector for WindyPear agent chat assistant mode.
 
 The connector registers a local device with the backend, polls for approved
 tool tasks, and sends task results back to the backend. The workspace directory
@@ -8,7 +8,7 @@ is selected in the web session settings.
 
 ## Run
 
-Generate a connector token in Advanced Chat > Devices, then run:
+Generate a connector token in agent chat > Devices, then run:
 
 ```powershell
 go run . -server http://localhost:8080 -token <connector-token>

@@ -29,8 +29,8 @@ type connectorClient struct {
 
 func main() {
 	server := flag.String("server", "http://localhost:8080", "Backend server URL")
-	token := flag.String("token", "", "Connector token generated from advanced chat")
-	name := flag.String("name", "", "Device name shown in advanced chat")
+	token := flag.String("token", "", "Connector token generated from agent chat")
+	name := flag.String("name", "", "Device name shown in agent chat")
 	mode := flag.String("mode", "platform", "Connector mode: platform or web_server")
 	webPort := flag.Int("web-port", 8080, "Static website server port in web_server mode")
 	dataDir := flag.String("data-dir", "", "Connector data directory")

@@ -76,3 +76,6 @@ then atomically swap the site's `public` directory.
 ```powershell
 go build -o veloce-app.exe .
 ```
+## Special thanks
+
+[Linuxdo](https://linux.do)

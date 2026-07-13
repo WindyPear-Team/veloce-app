@@ -14,13 +14,17 @@ import (
 func (client connectorClient) register() error {
 	version := currentConnectorVersion()
 	payload := map[string]interface{}{
-		"name":        client.config.Name,
-		"hostname":    hostname(),
-		"os":          runtime.GOOS,
-		"arch":        runtime.GOARCH,
-		"version":     version,
-		"mode":        client.config.Mode,
-		"listen_port": client.config.ListenPort,
+		"hostname":            hostname(),
+		"os":                  runtime.GOOS,
+		"arch":                runtime.GOARCH,
+		"version":             version,
+		"mode":                client.config.Mode,
+		"listen_port":         client.config.ListenPort,
+		"kind":                client.config.Kind,
+		"desktop_instance_id": client.config.DesktopInstanceID,
+	}
+	if client.config.Kind != connectorDeviceKindDesktop {
+		payload["name"] = client.config.Name
 	}
 	var response map[string]interface{}
 	return client.doJSON(http.MethodPost, "/api/advanced-chat/connectors/register", payload, &response)
@@ -32,13 +36,17 @@ func (client connectorClient) heartbeatLoop() {
 	for range ticker.C {
 		version := currentConnectorVersion()
 		payload := map[string]interface{}{
-			"name":        client.config.Name,
-			"hostname":    hostname(),
-			"os":          runtime.GOOS,
-			"arch":        runtime.GOARCH,
-			"version":     version,
-			"mode":        client.config.Mode,
-			"listen_port": client.config.ListenPort,
+			"hostname":            hostname(),
+			"os":                  runtime.GOOS,
+			"arch":                runtime.GOARCH,
+			"version":             version,
+			"mode":                client.config.Mode,
+			"listen_port":         client.config.ListenPort,
+			"kind":                client.config.Kind,
+			"desktop_instance_id": client.config.DesktopInstanceID,
+		}
+		if client.config.Kind != connectorDeviceKindDesktop {
+			payload["name"] = client.config.Name
 		}
 		if err := client.doJSON(http.MethodPost, "/api/advanced-chat/connectors/heartbeat", payload, nil); err != nil {
 			fmt.Printf("heartbeat failed: %v\n", err)

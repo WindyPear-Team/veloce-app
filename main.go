@@ -12,12 +12,14 @@ import (
 var connectorVersion = "dev"
 
 type connectorConfig struct {
-	Server     string
-	Token      string
-	Name       string
-	Mode       string
-	ListenPort int
-	DataDir    string
+	Server            string
+	Token             string
+	Name              string
+	Mode              string
+	ListenPort        int
+	DataDir           string
+	Kind              string
+	DesktopInstanceID string
 }
 
 type connectorClient struct {
@@ -34,6 +36,8 @@ func main() {
 	mode := flag.String("mode", "platform", "Connector mode: platform or web_server")
 	webPort := flag.Int("web-port", 8080, "Static website server port in web_server mode")
 	dataDir := flag.String("data-dir", "", "Connector data directory")
+	deviceKind := flag.String("device-kind", "cli", "Connector device kind: cli or desktop")
+	desktopInstanceID := flag.String("desktop-instance-id", "", "Veloce Desktop installation id")
 	flag.Parse()
 
 	if strings.TrimSpace(*token) == "" {
@@ -45,12 +49,14 @@ func main() {
 		deviceName = hostname
 	}
 	config := connectorConfig{
-		Server:     strings.TrimRight(strings.TrimSpace(*server), "/"),
-		Token:      strings.TrimSpace(*token),
-		Name:       deviceName,
-		Mode:       normalizeConnectorMode(*mode),
-		ListenPort: normalizeListenPort(*webPort, *mode),
-		DataDir:    strings.TrimSpace(*dataDir),
+		Server:            strings.TrimRight(strings.TrimSpace(*server), "/"),
+		Token:             strings.TrimSpace(*token),
+		Name:              deviceName,
+		Mode:              normalizeConnectorMode(*mode),
+		ListenPort:        normalizeListenPort(*webPort, *mode),
+		DataDir:           strings.TrimSpace(*dataDir),
+		Kind:              normalizeConnectorDeviceKind(*deviceKind),
+		DesktopInstanceID: strings.TrimSpace(*desktopInstanceID),
 	}
 	client := connectorClient{
 		config: config,
@@ -79,6 +85,18 @@ func main() {
 	}
 	go client.heartbeatLoop()
 	client.pollLoop()
+}
+
+const (
+	connectorDeviceKindCLI     = "cli"
+	connectorDeviceKindDesktop = "desktop"
+)
+
+func normalizeConnectorDeviceKind(value string) string {
+	if strings.EqualFold(strings.TrimSpace(value), connectorDeviceKindDesktop) {
+		return connectorDeviceKindDesktop
+	}
+	return connectorDeviceKindCLI
 }
 
 func fatalf(format string, args ...interface{}) {

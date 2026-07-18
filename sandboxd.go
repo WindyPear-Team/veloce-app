@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -122,8 +123,24 @@ func runSandboxdCommand(workspace, command string, timeoutSec int, spec sandboxd
 		timeoutSec = 30
 	}
 	policy := spec.SecurityPolicy
-	if sandboxdStringPolicy(policy, "runtime", "docker") != "docker" {
-		return commandResult{}, errors.New("only docker sandbox runtime is supported")
+	runtimeName := strings.ToLower(sandboxdStringPolicy(policy, "runtime", "docker"))
+	if runtimeName == "appcontainer" {
+		if runtime.GOOS != "windows" {
+			return commandResult{}, errors.New("the appcontainer sandbox runtime requires a Windows sandbox host")
+		}
+		if !appContainerAvailable() {
+			return commandResult{}, errors.New("Windows AppContainer APIs are unavailable on this sandbox host")
+		}
+		if platform := strings.ToLower(sandboxdStringPolicy(policy, "platform", "windows")); platform != "auto" && platform != "windows" {
+			return commandResult{}, errors.New("the appcontainer sandbox runtime requires the Windows platform")
+		}
+		if network := sandboxdStringPolicy(policy, "network", "none"); network != "none" {
+			return commandResult{}, errors.New("the appcontainer sandbox runtime does not permit network access")
+		}
+		return runAppContainerCommand(workspace, command, timeoutSec)
+	}
+	if runtimeName != "docker" {
+		return commandResult{}, fmt.Errorf("unsupported sandbox runtime %q", runtimeName)
 	}
 	if !sandboxdImageAllowed(policy, spec.Image) {
 		return commandResult{}, errors.New("container image is not allowed by this host policy")

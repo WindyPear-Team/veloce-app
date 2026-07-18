@@ -34,10 +34,18 @@ go run . -server https://platform.example -token <sandbox-host-token> -mode sand
 
 `sandboxd` reuses the connector heartbeat and task-polling protocol, but its
 workspaces are always created below `data-dir/sandboxes/<sandbox-id>/work`.
-It never accepts a user workspace path. Commands run in Docker with the image,
-CPU, memory, network, PID, capability, and read-only-root settings supplied by
-the administrator's host security policy. Docker must be installed and
-available on `PATH` on the sandbox host.
+It never accepts a user workspace path. By default, commands run in Docker
+with the image, CPU, memory, network, PID, capability, and read-only-root
+settings supplied by the administrator's host security policy. Docker must be
+installed and available on a Docker sandbox host.
+
+For a Windows host, set `security_policy.runtime` to `appcontainer` and set
+`security_policy.platform` to `windows`. sandboxd creates a distinct Windows
+AppContainer profile for each sandbox, grants that profile access only to its
+workspace, launches `cmd.exe` with `SECURITY_CAPABILITIES`, and supplies no
+network capabilities. This runtime requires no Docker installation, rejects
+policies that request network access, and requires a Windows version that
+provides the AppContainer APIs.
 
 Use `-data-dir <path>` to choose where hosted sites are stored. By default the
 connector uses the user config directory and stores sites under `sites/<domain>`.

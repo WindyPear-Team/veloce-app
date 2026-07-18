@@ -33,7 +33,7 @@ func main() {
 	server := flag.String("server", "http://localhost:8080", "Backend server URL")
 	token := flag.String("token", "", "Connector token generated from agent chat")
 	name := flag.String("name", "", "Device name shown in agent chat")
-	mode := flag.String("mode", "platform", "Connector mode: platform or web_server")
+	mode := flag.String("mode", "platform", "Connector mode: platform, web_server, or sandboxd")
 	webPort := flag.Int("web-port", 8080, "Static website server port in web_server mode")
 	dataDir := flag.String("data-dir", "", "Connector data directory")
 	deviceKind := flag.String("device-kind", "cli", "Connector device kind: cli or desktop")
@@ -114,12 +114,15 @@ func currentConnectorVersion() string {
 const (
 	connectorModePlatform  = "platform"
 	connectorModeWebServer = "web_server"
+	connectorModeSandboxd  = "sandboxd"
 )
 
 func normalizeConnectorMode(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case connectorModeWebServer:
 		return connectorModeWebServer
+	case connectorModeSandboxd:
+		return connectorModeSandboxd
 	default:
 		return connectorModePlatform
 	}

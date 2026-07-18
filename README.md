@@ -22,6 +22,23 @@ addition to the normal task receiver:
 go run . -server http://localhost:8080 -token <connector-token> -mode web_server -web-port 8080
 ```
 
+## Managed cloud sandbox worker
+
+Administrators can register a sandbox host in the admin API, which returns a
+host-scoped connector token. Start the same binary on that host in `sandboxd`
+mode:
+
+```powershell
+go run . -server https://platform.example -token <sandbox-host-token> -mode sandboxd -data-dir D:\veloce-sandboxes
+```
+
+`sandboxd` reuses the connector heartbeat and task-polling protocol, but its
+workspaces are always created below `data-dir/sandboxes/<sandbox-id>/work`.
+It never accepts a user workspace path. Commands run in Docker with the image,
+CPU, memory, network, PID, capability, and read-only-root settings supplied by
+the administrator's host security policy. Docker must be installed and
+available on `PATH` on the sandbox host.
+
 Use `-data-dir <path>` to choose where hosted sites are stored. By default the
 connector uses the user config directory and stores sites under `sites/<domain>`.
 

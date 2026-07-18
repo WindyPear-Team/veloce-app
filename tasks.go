@@ -78,6 +78,9 @@ func (result taskResult) payload(success bool) map[string]interface{} {
 }
 
 func (client connectorClient) executeTask(task connectorTask) (taskResult, error) {
+	if client.config.Mode == connectorModeSandboxd && strings.TrimSpace(stringArg(task.Payload, "cloud_sandbox_id")) != "" {
+		return client.executeSandboxdTask(task)
+	}
 	switch task.Action {
 	case "web_search":
 		result, err := webSearch(
@@ -209,5 +212,38 @@ func (client connectorClient) executeTask(task connectorTask) (taskResult, error
 		return commandTaskResult(result), err
 	default:
 		return taskResult{}, fmt.Errorf("unsupported action %q", task.Action)
+	}
+}
+
+func (client connectorClient) executeSandboxdTask(task connectorTask) (taskResult, error) {
+	workspace, err := client.sandboxdWorkspace(stringArg(task.Payload, "cloud_sandbox_id"))
+	if err != nil {
+		return taskResult{}, err
+	}
+	switch task.Action {
+	case "list_files":
+		result, err := listFiles(workspace, stringArg(task.Payload, "path"), intArg(task.Payload, "max_entries", 100))
+		return textTaskResult(result), err
+	case "read_file":
+		result, err := readFile(workspace, stringArg(task.Payload, "path"), intArg(task.Payload, "max_bytes", 120000))
+		return textTaskResult(result), err
+	case "file_sha256":
+		result, err := fileSHA256(workspace, stringArg(task.Payload, "path"))
+		return textTaskResult(result), err
+	case "write_file":
+		result, err := writeFile(workspace, stringArg(task.Payload, "path"), stringArg(task.Payload, "content"), boolArg(task.Payload, "overwrite"), boolArg(task.Payload, "create_dirs"))
+		return textTaskResult(result), err
+	case "replace_text":
+		result, err := replaceText(workspace, stringArg(task.Payload, "path"), stringArg(task.Payload, "old_text"), stringArg(task.Payload, "new_text"))
+		return textTaskResult(result), err
+	case "run_command":
+		spec, err := sandboxdSpecFromTask(task.Payload)
+		if err != nil {
+			return taskResult{}, err
+		}
+		result, err := runSandboxdCommand(workspace, stringArg(task.Payload, "command"), intArg(task.Payload, "timeout_sec", 30), spec)
+		return commandTaskResult(result), err
+	default:
+		return taskResult{}, fmt.Errorf("sandboxd does not allow action %q", task.Action)
 	}
 }
